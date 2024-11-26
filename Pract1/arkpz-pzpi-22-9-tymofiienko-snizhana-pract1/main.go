@@ -94,7 +94,7 @@ func main() {
 		fmt.Println(i)
 	}
 
-	Цикл for з використанням range
+	//Цикл for з використанням range
 
 	for key, value := range myMap {
 		fmt.Println(key, value)
