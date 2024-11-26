@@ -1,0 +1,288 @@
+Міністерство освіти і науки України
+Харківський національний університет радіоелектроніки
+
+
+
+
+Кафедра програмної інженерії
+
+
+
+Звіт
+З дисципліни «Аналіз та рефакторинг коду»
+З лабораторної роботи №2
+
+
+
+
+Виконала:
+ст. гр. ПЗПІ-22-9						              Тимофієнко С. О.
+
+Перевірив:
+ст. викл. ПІ						              	    Сокорчук І. П.
+
+
+
+
+
+
+
+
+
+Харків 2024 
+2 РОЗРОБКА БАЗИ ДАНИХ ДЛЯ СЕРВЕРНОЇ ЧАСТИНИ ПРОГРАМНОЇ СИСТЕМИ ТА ПРИКЛАДНОГО ПРОГРАМНОГО ІНТЕРФЕЙСУ (API).
+Мета:
+Розробити базу даних для серверної частини  програмної системи та прикладного програмного інтерфейсу.
+Хід роботи:
+Розглянемо будову програмної системи:
+
+Рисунок 2.1 – Будова програмної системи
+
+
+
+
+
+
+
+
+Розглянемо Use Case діаграму:
+
+Рисунок 2.2 – Use-case діаграма
+
+Розглянемо ER діаграму даних та діаграму структури БД:
+
+Рисунок 2.3 – ER-діаграма даних
+
+Рисунок 2.4 – Діаграма структури БД
+
+Для роботи була обрана база даних MongoDB. Сутність «User» та сутність «Pet» зв’язані зв’язком один до багатьох. Сутність «User» зв’язана з сутністю «Notification» зв’язком один до багатьох. Сутність «Pet» зв’язана з сутністю «Device» зв’язком один до одного. Сутність «Pet» зв’язана з сутністю «HealthData» зв’язком один до багатьох.
+
+Специфікація API:
+1)	Сторінка реєстрації/авторизації:
+- Реєстрація користувача: (POST) /login/registration
+- Авторизація користувача: (GET) /login/auth
+2)	Головна сторінка для адміністратора:
+Тварини:
+- Додавання тварини: (POST) /admin/add-pet
+- Оновлення данних тварини: (PUT) /admin/update-pet
+- Видалення тварини: (DELETE) /admin/delete-pet
+- Відображення всіх тварин: (GET) /user/pets
+Комірці:
+- Додавання комірця: (POST) /admin/add-device
+- Оновлення данних комірця: (PUT)  /admin/update-device
+Користувачі:
+- Оновлення данних користувача: (PUT) /user/update-info
+3)	Головна сторінка для власника тварини:
+- Відображення всіх тварин власника: (GET) /user/pets
+- Перегляд даних про стан тварини: (GET) /user/pet-info
+- Редагування данних: (PUT) /user/update-info
+4)	Головна сторінка для ветеринара:
+- Відображення всіх тварин: (GET) /user/pets
+- Перегляд даних про стан тварини: (GET) /user/pet-info
+- Формування звіту на основі даних: (GET) /vet/pet-report
+- Редагування данних: (PUT) /user/update-info
+
+ДОДАТОК А
+Код програми
+Код router.go
+package api
+
+import (
+	"context"
+	"github.com/NureTymofiienkoSnizhana/arkpz-pzpi-22-9-tymofiienko-snizhana/Pract1/arkpz-pzpi-22-9-tymofiienko-snizhana-task2/src/api/handlers"
+	"github.com/NureTymofiienkoSnizhana/arkpz-pzpi-22-9-tymofiienko-snizhana/Pract1/arkpz-pzpi-22-9-tymofiienko-snizhana-task2/src/data"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"net/http"
+	"time"
+)
+
+type Config struct {
+	MasterDB data.MasterDB
+}
+
+func Run(config Config) {
+	r := chi.NewRouter()
+
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := context.WithValue(r.Context(), handlers.MasterDBContextKey, config.MasterDB)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	})
+
+	r.Use(middleware.Timeout(60 * time.Second))
+
+	r.Route("/api/pet-and-health", func(r chi.Router) {
+		r.Route("/v1/login", func(r chi.Router) {
+			r.Get("/auth", handlers.Auth)
+			r.Post("/registration", handlers.Registration)
+		})
+		r.Route("/v1/admin/pets", func(r chi.Router) {
+			r.Post("/add-pet", handlers.AddPet)
+			//r.Delete("/delete-pet", handlers.UpdateUser)
+			r.Put("/update-pet", handlers.UpdatePet)
+		})
+		r.Route("/v1/admin/devices", func(r chi.Router) {
+			r.Post("/add-device", handlers.AddDevice)
+			r.Put("/update-device", handlers.UpdateDevice)
+		})
+		r.Route("/v1/user", func(r chi.Router) {
+			r.Put("/update-user", handlers.UpdateUser)
+			//r.Post("/pets", handlers.AddDevice)
+			//r.Put("/pet-info", handlers.UpdateDevice)
+		})
+		r.Route("/v1/vet", func(r chi.Router) {
+			//r.Put("/pet-report", handlers.UpdatePet)
+		})
+	})
+
+	err := http.ListenAndServe(":8080", r)
+	if err != nil {
+		panic(err)
+	}
+}
+Код handlers.registration.go
+package handlers
+
+import (
+	"encoding/json"
+	"github.com/NureTymofiienkoSnizhana/arkpz-pzpi-22-9-tymofiienko-snizhana/Pract1/arkpz-pzpi-22-9-tymofiienko-snizhana-task2/src/api/requests"
+	"github.com/NureTymofiienkoSnizhana/arkpz-pzpi-22-9-tymofiienko-snizhana/Pract1/arkpz-pzpi-22-9-tymofiienko-snizhana-task2/src/data"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"net/http"
+	"strings"
+)
+
+func Registration(w http.ResponseWriter, r *http.Request) {
+	req, err := requests.NewRegistration(r)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	user := data.User{
+		ID:           primitive.NewObjectID(),
+		FullName:     req.FullName,
+		Email:        req.Email,
+		Role:         "user",
+		PasswordHash: req.PasswordHash,
+	}
+
+	usersDB := MongoDB(r).Users()
+
+	err = usersDB.Insert(&user)
+	if err != nil {
+		if strings.Contains(err.Error(), "duplicate key error collection") {
+			w.WriteHeader(http.StatusConflict)
+			return
+		}
+		http.Error(w, "Failed to save user", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "User registered successfully",
+		"userID":  user.ID.Hex(),
+	})
+}
+
+Код requests.registration.go
+package requests
+
+import (
+	"encoding/json"
+	"errors"
+	"io"
+	"net/http"
+)
+
+type Registration struct {
+	FullName     string `json:"full_name"`
+	Email        string `json:"email"`
+	PasswordHash string `json:"password_hash"`
+}
+
+func NewRegistration(r *http.Request) (*Registration, error) {
+	bodyReader := r.Body
+	if bodyReader == nil {
+		return nil, errors.New("missing body")
+	}
+
+	body, err := io.ReadAll(bodyReader)
+	if err != nil {
+		return nil, err
+	}
+
+	var user Registration
+	err = json.Unmarshal(body, &user)
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+Код mongodb.users.go
+package mongodb
+
+import (
+	"context"
+	"github.com/NureTymofiienkoSnizhana/arkpz-pzpi-22-9-tymofiienko-snizhana/Pract1/arkpz-pzpi-22-9-tymofiienko-snizhana-task2/src/data"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+)
+
+const UsersCollectionName = "Users"
+
+type usersDB struct {
+	collection *mongo.Collection
+}
+
+func newUsersDB(db *mongo.Database) *usersDB {
+	return &usersDB{
+		collection: db.Collection(UsersCollectionName),
+	}
+}
+
+func NewUsersDB(db *mongo.Database) data.UsersDB {
+	return newUsersDB(db)
+}
+
+func (u *usersDB) Get(id primitive.ObjectID) (*data.User, error) {
+	var result data.User
+	err := u.collection.FindOne(context.TODO(), bson.M{"_id": id}).Decode(&result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (u *usersDB) Insert(user *data.User) error {
+	_, err := u.collection.InsertOne(context.TODO(), user)
+	return err
+}
+
+func (u *usersDB) Update(id primitive.ObjectID, updateFields bson.M) error {
+	_, err := u.collection.UpdateOne(
+		context.TODO(),
+		bson.M{"_id": id},
+		bson.M{"$set": updateFields},
+	)
+	return err
+}
+
+func (u *usersDB) FindByEmail(email string) (*data.User, error) {
+	var user data.User
+	err := u.collection.FindOne(context.Background(), bson.M{"email": email}).Decode(&user)
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}

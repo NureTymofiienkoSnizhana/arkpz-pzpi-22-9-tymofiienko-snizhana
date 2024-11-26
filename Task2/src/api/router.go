@@ -30,15 +30,27 @@ func Run(config Config) {
 
 	r.Use(middleware.Timeout(60 * time.Second))
 
-	r.Route("/api/petandhealth", func(r chi.Router) {
-		r.Route("/v1/public", func(r chi.Router) {
+	r.Route("/api/pet-and-health", func(r chi.Router) {
+		r.Route("/v1/login", func(r chi.Router) {
 			r.Get("/auth", handlers.Auth)
 			r.Post("/registration", handlers.Registration)
-			r.Post("/adddevice", handlers.AddDevice)
-			r.Post("/addpet", handlers.AddPet)
-			r.Put("/updateuser", handlers.UpdateUser)
-			r.Put("/updatepet", handlers.UpdatePet)
-			r.Put("/updatedevice", handlers.UpdateDevice)
+		})
+		r.Route("/v1/admin/pets", func(r chi.Router) {
+			r.Post("/add-pet", handlers.AddPet)
+			r.Delete("/delete-pet", handlers.DeletePet)
+			r.Put("/update-pet", handlers.UpdatePet)
+		})
+		r.Route("/v1/admin/devices", func(r chi.Router) {
+			r.Post("/add-device", handlers.AddDevice)
+			r.Put("/update-device", handlers.UpdateDevice)
+		})
+		r.Route("/v1/user", func(r chi.Router) {
+			r.Put("/update-user", handlers.UpdateUser)
+			r.Get("/pets", handlers.GetPets)
+			r.Get("/pet-info", handlers.PetInfo)
+		})
+		r.Route("/v1/vet", func(r chi.Router) {
+			//r.Get("/pet-report", handlers.PetReport)
 		})
 	})
 

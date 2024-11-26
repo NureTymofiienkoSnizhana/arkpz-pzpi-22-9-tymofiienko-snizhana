@@ -9,6 +9,8 @@ type PetsDB interface {
 	Get(id primitive.ObjectID) (*Pet, error)
 	Insert(*Pet) error
 	Update(id primitive.ObjectID, updateFields bson.M) error
+	Delete(id primitive.ObjectID) error
+	GetAll() ([]*Pet, error)
 }
 
 type Pet struct {

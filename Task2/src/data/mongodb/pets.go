@@ -46,3 +46,31 @@ func (p *petsDB) Update(id primitive.ObjectID, updateFields bson.M) error {
 	)
 	return err
 }
+
+func (p *petsDB) Delete(id primitive.ObjectID) error {
+	_, err := p.collection.DeleteOne(context.TODO(), bson.M{"_id": id})
+	return err
+}
+
+func (p *petsDB) GetAll() ([]*data.Pet, error) {
+	var pets []*data.Pet
+	cursor, err := p.collection.Find(context.Background(), bson.M{})
+	if err != nil {
+		return nil, err
+	}
+
+	for cursor.Next(context.Background()) {
+		var pet *data.Pet
+		err := cursor.Decode(&pet)
+		if err != nil {
+			return nil, err
+		}
+		pets = append(pets, pet)
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+
+	return pets, nil
+}
