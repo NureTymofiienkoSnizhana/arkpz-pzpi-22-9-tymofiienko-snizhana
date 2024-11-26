@@ -19,7 +19,7 @@ func AddPet(w http.ResponseWriter, r *http.Request) {
 	pet := data.Pet{
 		ID:      primitive.NewObjectID(),
 		Name:    req.Name,
-		Speices: req.Speices,
+		Species: req.Species,
 		Breed:   req.Breed,
 		Age:     req.Age,
 	}

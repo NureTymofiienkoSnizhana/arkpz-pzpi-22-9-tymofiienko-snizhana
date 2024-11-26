@@ -9,7 +9,7 @@ import (
 
 type AddPet struct {
 	Name    string `json:"name"`
-	Speices string `json:"speices"`
+	Species string `json:"species"`
 	Breed   string `json:"breed"`
 	Age     int    `json:"age"`
 }

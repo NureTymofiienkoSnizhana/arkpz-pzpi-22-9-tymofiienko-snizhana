@@ -16,7 +16,7 @@ func UpdatePet(w http.ResponseWriter, r *http.Request) {
 
 	updateFields := bson.M{
 		"name":     req.Name,
-		"speices":  req.Speices,
+		"species":  req.Species,
 		"breed":    req.Breed,
 		"age":      req.Age,
 		"owner_id": req.OwnerID,

@@ -11,13 +11,24 @@ type PetsDB interface {
 	Update(id primitive.ObjectID, updateFields bson.M) error
 	Delete(id primitive.ObjectID) error
 	GetAll() ([]*Pet, error)
+	GetPetWithHealth(petID primitive.ObjectID) (*PetWithHealth, error)
 }
 
 type Pet struct {
 	ID      primitive.ObjectID `bson:"_id"`
 	Name    string             `bson:"name"`
-	Speices string             `bson:"speices"`
+	Species string             `bson:"species"`
 	Breed   string             `bson:"breed"`
 	Age     int                `bson:"age"`
 	OwnerID primitive.ObjectID `bson:"owner_id"`
+}
+
+type PetWithHealth struct {
+	ID      primitive.ObjectID `bson:"_id"`
+	Name    string             `bson:"name"`
+	Species string             `bson:"species"`
+	Breed   string             `bson:"breed"`
+	Age     int                `bson:"age"`
+	OwnerID primitive.ObjectID `bson:"owner_id"`
+	Health  []HealthData       `bson:"health_data"`
 }

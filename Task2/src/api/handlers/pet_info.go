@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"github.com/NureTymofiienkoSnizhana/arkpz-pzpi-22-9-tymofiienko-snizhana/Pract1/arkpz-pzpi-22-9-tymofiienko-snizhana-task2/src/api/requests"
+	"go.mongodb.org/mongo-driver/mongo"
 	"net/http"
 )
 
@@ -19,15 +20,17 @@ func PetInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	petsDB := MongoDB(r).Pets()
-
-	pet, err := petsDB.Get(req.ID)
+	petWithHealth, err := petsDB.GetPetWithHealth(req.ID)
 	if err != nil {
-		http.Error(w, "Failed to retrieve pet", http.StatusInternalServerError)
+		if err == mongo.ErrNoDocuments {
+			http.Error(w, "Pet not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Failed to retrieve pet information", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-
-	json.NewEncoder(w).Encode(pet)
+	json.NewEncoder(w).Encode(petWithHealth)
 }

@@ -3,13 +3,12 @@ package data
 import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"time"
 )
 
 type HealthDataDB interface {
-	Get(id string) (*HealthData, error)
+	Get(pet_id primitive.ObjectID) (*HealthData, error)
 	Insert(*HealthData) error
-	Update(id string, updateFields bson.M) error
+	Update(pet_id primitive.ObjectID, updateFields bson.M) error
 }
 
 type HealthData struct {
@@ -18,5 +17,5 @@ type HealthData struct {
 	Activity string             `bson:"activity"`
 	Sleep    string             `bson:"sleep"`
 	Feeding  string             `bson:"feeding"`
-	Time     time.Time          `bson:"time"`
+	Time     string             `bson:"time"`
 }

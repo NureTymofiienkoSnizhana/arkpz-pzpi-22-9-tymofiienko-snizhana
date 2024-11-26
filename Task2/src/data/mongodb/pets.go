@@ -74,3 +74,36 @@ func (p *petsDB) GetAll() ([]*data.Pet, error) {
 
 	return pets, nil
 }
+
+func (p *petsDB) GetPetWithHealth(petID primitive.ObjectID) (*data.PetWithHealth, error) {
+	pipeline := mongo.Pipeline{
+		{
+			{"$match", bson.D{{"_id", petID}}},
+		},
+		{
+			{"$lookup", bson.D{
+				{"from", "HealthData"},
+				{"localField", "_id"},
+				{"foreignField", "pet_id"},
+				{"as", "health_data"},
+			}},
+		},
+	}
+
+	cursor, err := p.collection.Aggregate(context.TODO(), pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(context.TODO())
+
+	var results []data.PetWithHealth
+	if err := cursor.All(context.TODO(), &results); err != nil {
+		return nil, err
+	}
+
+	if len(results) == 0 {
+		return nil, mongo.ErrNoDocuments
+	}
+
+	return &results[0], nil
+}

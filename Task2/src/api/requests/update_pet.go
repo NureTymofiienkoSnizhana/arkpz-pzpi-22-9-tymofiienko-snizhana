@@ -11,7 +11,7 @@ import (
 type UpdatePet struct {
 	ID      primitive.ObjectID `json:"_id"`
 	Name    string             `json:"name"`
-	Speices string             `json:"speices"`
+	Species string             `json:"species"`
 	Breed   string             `json:"breed"`
 	Age     int                `json:"age"`
 	OwnerID primitive.ObjectID `json:"owner_id"`
