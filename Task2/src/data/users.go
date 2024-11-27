@@ -10,6 +10,7 @@ type UsersDB interface {
 	Insert(*User) error
 	Update(id primitive.ObjectID, updateFields bson.M) error
 	FindByEmail(email string) (*User, error)
+	//UpdatePets(userID primitive.ObjectID, petID primitive.ObjectID) error
 }
 
 type User struct {

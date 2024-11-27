@@ -5,6 +5,7 @@ import (
 	"github.com/NureTymofiienkoSnizhana/arkpz-pzpi-22-9-tymofiienko-snizhana/Pract1/arkpz-pzpi-22-9-tymofiienko-snizhana-task2/src/api/requests"
 	"github.com/NureTymofiienkoSnizhana/arkpz-pzpi-22-9-tymofiienko-snizhana/Pract1/arkpz-pzpi-22-9-tymofiienko-snizhana-task2/src/data"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"strings"
 )
@@ -16,12 +17,18 @@ func Registration(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		http.Error(w, "Failed to hash password", http.StatusInternalServerError)
+		return
+	}
+
 	user := data.User{
 		ID:           primitive.NewObjectID(),
 		FullName:     req.FullName,
 		Email:        req.Email,
 		Role:         "user",
-		PasswordHash: req.PasswordHash,
+		PasswordHash: string(hashedPassword),
 	}
 
 	usersDB := MongoDB(r).Users()

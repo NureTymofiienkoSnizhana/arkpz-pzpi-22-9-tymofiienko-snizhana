@@ -3,15 +3,17 @@ package requests
 import (
 	"encoding/json"
 	"errors"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"io"
 	"net/http"
 )
 
 type AddPet struct {
-	Name    string `json:"name"`
-	Species string `json:"species"`
-	Breed   string `json:"breed"`
-	Age     int    `json:"age"`
+	Name    string             `json:"name"`
+	Species string             `json:"species"`
+	Breed   string             `json:"breed"`
+	Age     int                `json:"age"`
+	OwnerID primitive.ObjectID `json:"owner_id"`
 }
 
 func NewPet(r *http.Request) (*AddPet, error) {

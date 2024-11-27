@@ -22,6 +22,7 @@ func AddPet(w http.ResponseWriter, r *http.Request) {
 		Species: req.Species,
 		Breed:   req.Breed,
 		Age:     req.Age,
+		OwnerID: req.OwnerID,
 	}
 
 	petsDB := MongoDB(r).Pets()
@@ -35,6 +36,14 @@ func AddPet(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to add pet", http.StatusInternalServerError)
 		return
 	}
+
+	//usersDB := MongoDB(r).Users()
+	//
+	//err = usersDB.UpdatePets(req.OwnerID, pet.ID)
+	//if err != nil {
+	//	http.Error(w, "Failed to update user with pet ID", http.StatusInternalServerError)
+	//	return
+	//}
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{

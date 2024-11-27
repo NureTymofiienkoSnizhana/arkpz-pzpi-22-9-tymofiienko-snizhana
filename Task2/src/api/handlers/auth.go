@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"github.com/NureTymofiienkoSnizhana/arkpz-pzpi-22-9-tymofiienko-snizhana/Pract1/arkpz-pzpi-22-9-tymofiienko-snizhana-task2/src/api/requests"
+	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"strings"
 )
@@ -28,15 +29,12 @@ func Auth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if user.PasswordHash != req.PasswordHash {
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Invalid credentials",
-		})
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.PasswordHash))
+	if err != nil {
+		http.Error(w, "Invalid password", http.StatusUnauthorized)
 		return
 	}
 
-	// Якщо автентифікація успішна
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{
 		"message": "User authenticated successfully",
