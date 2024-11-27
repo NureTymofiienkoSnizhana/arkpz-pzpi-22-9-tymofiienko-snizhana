@@ -6,6 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"time"
 )
 
 const DevicesCollectionName = "Devices"
@@ -34,11 +35,25 @@ func (d *devicesDB) Get(id primitive.ObjectID) (*data.Device, error) {
 }
 
 func (d *devicesDB) Insert(device *data.Device) error {
+	if device.LastSyncTime.T == 0 {
+		epochSeconds := time.Now().Unix()
+		device.LastSyncTime = primitive.Timestamp{
+			T: uint32(epochSeconds),
+			I: 0,
+		}
+	}
+
 	_, err := d.collection.InsertOne(context.TODO(), device)
 	return err
 }
 
 func (d *devicesDB) Update(id primitive.ObjectID, updateFields bson.M) error {
+	if _, ok := updateFields["last_sync_time"]; ok {
+		if epochSeconds, ok := updateFields["last_sync_time"].(int64); ok {
+			updateFields["last_sync_time"] = time.Unix(epochSeconds, 0)
+		}
+	}
+
 	_, err := d.collection.UpdateOne(
 		context.TODO(),
 		bson.M{"_id": id},

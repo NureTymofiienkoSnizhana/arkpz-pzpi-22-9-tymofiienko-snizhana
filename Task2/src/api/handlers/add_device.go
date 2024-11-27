@@ -16,11 +16,16 @@ func AddDevice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	lastSyncTime := primitive.Timestamp{
+		T: uint32(req.LastSyncTime), // Seconds since Epoch
+		I: 0,                        // Інкремент, зазвичай 0
+	}
+
 	device := data.Device{
 		ID:           primitive.NewObjectID(),
 		PetID:        req.PetID,
 		Status:       req.Status,
-		LastSyncTime: req.LastSyncTime,
+		LastSyncTime: lastSyncTime,
 	}
 
 	devicesDB := MongoDB(r).Devices()

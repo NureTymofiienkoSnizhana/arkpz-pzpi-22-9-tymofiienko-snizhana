@@ -11,7 +11,7 @@ import (
 type AddDevice struct {
 	PetID        primitive.ObjectID `json:"pet_id"`
 	Status       string             `json:"status"`
-	LastSyncTime string             `json:"last_sync_time"`
+	LastSyncTime int64              `json:"last_sync_time"`
 }
 
 func NewDevice(r *http.Request) (*AddDevice, error) {

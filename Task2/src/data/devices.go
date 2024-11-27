@@ -12,8 +12,8 @@ type DevicesDB interface {
 }
 
 type Device struct {
-	ID           primitive.ObjectID `bson:"_id"`
-	PetID        primitive.ObjectID `bson:"pet_id"`
-	Status       string             `bson:"status"`
-	LastSyncTime string             `bson:"last_sync_time"`
+	ID           primitive.ObjectID  `bson:"_id"`
+	PetID        primitive.ObjectID  `bson:"pet_id"`
+	Status       string              `bson:"status"`
+	LastSyncTime primitive.Timestamp `bson:"last_sync_time"`
 }
