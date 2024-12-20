@@ -1,0 +1,367 @@
+Міністерство освіти і науки України
+Харківський національний університет радіоелектроніки
+
+
+
+
+Кафедра програмної інженерії
+
+
+
+Звіт
+З дисципліни «Аналіз та рефакторинг коду»
+З лабораторної роботи №4
+
+
+
+
+Виконала:
+ст. гр. ПЗПІ-22-9						              Тимофієнко С. О.
+
+Перевірив:						              	    Дашенков Д. С.
+
+
+
+
+
+
+
+
+
+Харків 2024 
+4 РОЗРОБКА IoT КЛІЄНТА
+(БІЗНЕС-ЛОГІКИ ТА ФУНКЦІЙ НАЛАШТУВАННЯ)
+Мета:
+Розробити програмне забезпечення для  IoT або SmartDevice пристрою, створеного на базі будь-якої поширеної на  сьогодні платформи, придатної для реалізації вбудованих систем (Embedded System).
+Хід роботи:
+1. Розробити будову програмного забезпечення ІоТ клієнта.
+1) Сенсори та датчики:
+- DHT22: Зчитує температуру.
+- MPU6050: Зчитує дані акселерометра для визначення активності.
+2) Мережевий модуль: Wi-Fi для підключення до мережі.
+3) Обмін даними з сервером: HTTP-запити до сервера через WiFi та HttpClient.
+4) Бізнес-логіка:
+- Обчислення часу сну.
+- Відправка даних про активність, температуру та час сну на сервер.
+- Перевірка отриманих даних на критичні значення та генерація повідомлень у разі відхилення від норми.
+2. Створити UML діаграму прецедентів для ІоТ клієнта.
+
+Рисунок 1 - UML діаграма прецедентів для ІоТ клієнта
+3. Розробити бізнес логіку та функції налаштування ІоТ клієнта.
+1) Моніторинг активності:
+- Обчислення активності тварини через акселерометр.
+- Якщо активність < 5, вважається, що тварина спить.
+2) Обчислення часу сну:
+- Підрахунок часу сну в мілісекундах.
+- Обнулення лічильника часу сну при переході на новий день.
+3) Моніторинг температури:
+- Регулярне зчитування температури тіла.
+4) Відправка даних:
+- Відправка temperature, activity, sleep_hours через HTTP POST.
+5) Створити діаграму діяльності для ІоТ клієнта.
+
+Рисунок 2 – Діаграма діяльності IoT- клієнта
+6) Створити програмну реалізацію бізнес логіки та функцій налаштування ІоТ клієнта.
+Для створення IoT клієнта було використано додаток WOKWI. У якості мікроконтролеру було використано ESP23, у якості датчика вимірювання температури використано DHT22. Для визначення активності тварини протягом дня, було використано датчик MPU6050.
+На рисунку 1 зображено схему пристрою, що використовується. Посилання на схему: https://wokwi.com/projects/417554291140221953
+Код налаштування IoT клієнта та програмної реалізації бізнес логіки представлений у додатку А.
+
+
+Рисунок 3 – Схема пристрою
+7) Перевірити роботу ІоТ клієнта.
+Для перевірки роботи IoT клієнта використаємо під’єднання до WiFi та перевіримо спочатку чи працюють датчики та чи правильно підраховуються дані. Далі спробуємо відправити ці дані на сервер.
+1) Перевірка роботи датчиків і підрахунку даних:
+
+Рисунок 4 – Виведення данних з датчиків
+	Бачимо, що датчики працюють коректно і дані рахуються як треба.
+2) Відправка даних на сервер:
+
+Рисунок 5 – Підключення до WiFi
+
+Рисунок 6 – Створення HTTP запиту і надсилання його на сервер
+Бачимо, що в консоль вивелася відповідь сервера. Перевіримо чи завантажилися дані у базу даних:
+
+Рисунок 7 – Вигляд запису в базі даних 
+ДОДАТОК А
+Код програми
+Налаштування роботи IoT-пристрою
+sketch.ino
+#include "DHTesp.h"
+#include <Adafruit_MPU6050.h>
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include "time.h"
+const int DHT_PIN = 15;
+DHTesp dhtSensor;
+Adafruit_MPU6050 mpu;
+#define MPU6050_ADDR 0x68;
+const char* ssid = "Wokwi-GUEST";
+const char* password = "";
+const char* serverUrl = "http://2259-82-144-214-50.ngrok-free.app/api/pet-and-health/v1/health-data/device";
+const char* ntpServer = "pool.ntp.org";
+const long gmtOffset_sec = 0;
+const int daylightOffset_sec = 0;
+const char* petId = "6746db1e7a2137a0f967604d";
+float activity;
+unsigned long lastUpdate = 0;
+unsigned long sleepStartTime = 0;
+unsigned long totalSleepTime = 0;
+bool isSleeping = false;
+
+void setup() {
+  Serial.begin(115200);
+  dhtSensor.setup(DHT_PIN, DHTesp::DHT22);
+
+  if (!mpu.begin()) {
+    Serial.println("Failed to find MPU6050 chip");
+    while (1) {
+      delay(10);
+    }
+  }
+
+  mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+  mpu.setGyroRange(MPU6050_RANGE_250_DEG);
+  mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+
+  Serial.println("Connecting to Wi-Fi...");
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(2000);
+    Serial.println("Current Wi-Fi Status: " + String(WiFi.status()));
+
+  }
+  Serial.println("Wi-Fi connected!");
+
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  Serial.println("Time synchronized.");
+}
+
+void sendDataToServer(float temp, float activity, float sleepHours) {
+  String jsonData = "{";
+  jsonData += "\"pet_id\":\"" + String(petId) + "\",";
+  jsonData += "\"activity\":" + String(activity, 2) + ",";
+  jsonData += "\"sleep_hours\":" + String(sleepHours, 2) + ",";
+  jsonData += "\"temperature\":" + String(temp, 2);
+  jsonData += "}";
+
+  Serial.print("JSON: ");
+  Serial.println(jsonData);
+
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    http.begin(serverUrl);
+
+    http.addHeader("Content-Type", "application/json");
+    int httpCode = http.POST(jsonData);
+
+    Serial.print("HTTP POST Code: ");
+    Serial.println(httpCode);
+
+  if (httpCode > 0) {
+    String response = http.getString();
+    Serial.print("Server Response: ");
+    Serial.println(response);
+  } else {
+    Serial.println("Error in HTTP request");
+  }
+
+  http.end();
+  } else {
+  Serial.println("WiFi Disconnected");
+  }
+}
+
+void loop() {
+  struct tm timeinfo;
+  if (!getLocalTime(&timeinfo)) {
+    Serial.println("Failed to obtain time");
+    return;
+  }
+
+  if (timeinfo.tm_hour == 0 && timeinfo.tm_min == 0) {
+    totalSleepTime = 0;
+    Serial.println("Sleep time reset to 0 (new day started).");
+    delay(60000);
+  }
+
+  TempAndHumidity  data = dhtSensor.getTempAndHumidity();
+  Serial.println("Temp: " + String(data.temperature, 2) + "°C");
+
+  sensors_event_t a, g, temp;
+  mpu.getEvent(&a, &g, &temp);
+
+  Serial.print("Accel X: ");
+  Serial.print(a.acceleration.x);
+  Serial.print(" Y: ");
+  Serial.print(a.acceleration.y);
+  Serial.print(" Z: ");
+  Serial.println(a.acceleration.z);
+
+  activity = sqrt(a.acceleration.x * a.acceleration.x +
+                  a.acceleration.y * a.acceleration.y +
+                  a.acceleration.z * a.acceleration.z);
+
+  Serial.print("Activity: ");
+  Serial.println(activity);
+
+  if (activity < 5) {
+    if (!isSleeping) {
+      isSleeping = true;
+      sleepStartTime = millis();
+    }
+  } else {
+    if (isSleeping) {
+      totalSleepTime += millis() - sleepStartTime;
+      isSleeping = false;
+    }
+  }
+
+  Serial.print("Sleep hours: ");
+  Serial.println(totalSleepTime/ 3600000.0);
+  Serial.println("---");
+
+  if (millis() - lastUpdate > 10000) {
+    lastUpdate = millis();
+
+    float sleepHours = totalSleepTime / 3600000.0;
+
+    sendDataToServer(data.temperature, activity, sleepHours);
+  }
+
+  delay(2000);
+}
+
+
+diagram.json
+{
+  "version": 1,
+  "author": "Uri Shaked",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-esp32-devkit-v1", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    {
+      "type": "wokwi-dht22",
+      "id": "dht1",
+      "top": -38.1,
+      "left": 215.4,
+      "attrs": { "temperature": "38.9" }
+    },
+    { "type": "wokwi-mpu6050", "id": "imu1", "top": 234.22, "left": 117.52, "attrs": {} }
+  ],
+  "connections": [
+    [ "esp:TX0", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX0", "$serialMonitor:TX", "", [] ],
+    [ "dht1:SDA", "esp:D15", "green", [ "v0" ] ],
+    [ "dht1:VCC", "esp:3V3", "red", [ "v0" ] ],
+    [ "dht1:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "imu1:VCC", "esp:3V3", "red", [ "v0" ] ],
+    [ "imu1:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "imu1:SCL", "esp:D22", "green", [ "v0" ] ],
+    [ "imu1:SDA", "esp:D21", "green", [ "v0" ] ]
+  ],
+  "dependencies": {}
+}
+
+Налаштування серверної частини
+handlers.add_health_data.go
+
+package handlers
+
+import (
+	"encoding/json"
+	"fmt"
+	"github.com/NureTymofiienkoSnizhana/arkpz-pzpi-22-9-tymofiienko-snizhana/Pract1/arkpz-pzpi-22-9-tymofiienko-snizhana-task2/src/api/requests"
+	"github.com/NureTymofiienkoSnizhana/arkpz-pzpi-22-9-tymofiienko-snizhana/Pract1/arkpz-pzpi-22-9-tymofiienko-snizhana-task2/src/data"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"net/http"
+	"strings"
+	"time"
+)
+
+func AddHealthData(w http.ResponseWriter, r *http.Request) {
+	req, err := requests.NewHealthData(r)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	currentTime := time.Now()
+	lastSyncTime := primitive.Timestamp{
+		T: uint32(currentTime.Unix()),
+		I: 0,
+	}
+
+	healthData := data.HealthData{
+		ID:          primitive.NewObjectID(),
+		PetID:       req.PetID,
+		Activity:    req.Activity,
+		SleepHours:  req.SleepHours,
+		Temperature: req.Temperature,
+		Time:        lastSyncTime,
+	}
+
+	healthDataDB := MongoDB(r).HealthData()
+
+	err = healthDataDB.Insert(&healthData)
+	if err != nil {
+		if strings.Contains(err.Error(), "duplicate key error collection") {
+			w.WriteHeader(http.StatusConflict)
+			return
+		}
+		http.Error(w, "Failed to add data", http.StatusInternalServerError)
+		return
+	}
+
+	petDB := MongoDB(r).Pets()
+	pet, err := petDB.Get(req.PetID)
+	if err != nil || pet == nil {
+		http.Error(w, "Failed to fetch pet information", http.StatusInternalServerError)
+		return
+	}
+
+	ownerID := pet.OwnerID
+
+	notificationsDB := MongoDB(r).Notifications()
+	checkThresholdsAndNotify(notificationsDB, ownerID, req.Temperature, req.SleepHours, currentTime)
+
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message":      "Data added successfully",
+		"healthDataID": healthData.ID.Hex(),
+		"time":         currentTime.Format(time.RFC3339),
+	})
+}
+
+func checkThresholdsAndNotify(notificationsDB data.NotificationsDB, ownerID primitive.ObjectID, temperature float64, sleepHours float64, currentTime time.Time) {
+	const (
+		minTemperature = 37.0
+		maxTemperature = 39.5
+		minSleepHours  = 7.0
+		maxSleepHours  = 15.0
+	)
+
+	if temperature < minTemperature || temperature > maxTemperature {
+		message := fmt.Sprintf("Abnormal temperature detected: %.2f°C. Please check your pet's health.", temperature)
+		createNotification(notificationsDB, ownerID, message, currentTime)
+	}
+
+	if sleepHours > maxSleepHours {
+		message := fmt.Sprintf("Abnormal sleep hours detected: %.2f hours. Please monitor your pet's activity.", sleepHours)
+		createNotification(notificationsDB, ownerID, message, currentTime)
+	}
+}
+
+func createNotification(notificationsDB data.NotificationsDB, ownerID primitive.ObjectID, message string, currentTime time.Time) {
+	notification := data.Notification{
+		ID:      primitive.NewObjectID(),
+		UserID:  ownerID,
+		Message: message,
+		Time:    currentTime,
+	}
+
+	err := notificationsDB.Insert(&notification)
+	if err != nil {
+		fmt.Printf("Failed to insert notification: %s\n", err)
+	}
+}
